@@ -1,12 +1,10 @@
 package ru.itl.wallshmickers;
 
 import com.badlogic.gdx.Gdx;
-import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.math.Vector2;
-import com.badlogic.gdx.math.Vector3;
 import com.badlogic.gdx.physics.box2d.Box2DDebugRenderer;
 import com.badlogic.gdx.physics.box2d.Contact;
 import com.badlogic.gdx.physics.box2d.ContactImpulse;
@@ -16,8 +14,13 @@ import com.badlogic.gdx.physics.box2d.Manifold;
 import com.badlogic.gdx.physics.box2d.World;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.ScreenUtils;
+import com.badlogic.gdx.graphics.g2d.BitmapFont;
+import com.badlogic.gdx.graphics.g2d.freetype.FreeTypeFontGenerator;
+import com.badlogic.gdx.graphics.g2d.freetype.FreeTypeFontGenerator.FreeTypeFontParameter;
+import com.badlogic.gdx.graphics.Color;
 
-import states.Pause;
+
+import states.DieState;
 import states.State;
 
 public class GameScreen extends State {
@@ -31,10 +34,17 @@ public class GameScreen extends State {
     Texture ground;
     private float accumulator = 0;
     Player player;
-    public static final int BORDERS_COUNT = 10;
+    public static final int BORDERS_COUNT = 14;
     private Array<BorderStar> borders;
     private Array<Border> trueborders;
-    private Array<Texture> bgs;
+    public int bgposition = 2410;
+    BitmapFont font;
+    public float score = 0;
+    public float siu = 160;
+    Texture rightstart;
+    Texture leftstart;
+
+
 
     public GameScreen(GameStateManager gsm) {
         super(gsm);
@@ -42,14 +52,48 @@ public class GameScreen extends State {
         cam.update();
 
 
+
+
         world = new World(new Vector2(0, -10), true);
         debugRenderer = new Box2DDebugRenderer();
 
         borders = new Array<BorderStar>();
         trueborders = new Array<>();
-        bgs = new Array<>();
         int borderposx = WIDTH / 2;
-        int borderposy = 140;
+        int borderposy = 400;
+
+
+        //rightstart border
+        new Border().createBody(world,
+                new Vector2(borderposx + WIDTH / 8 - 7, 110),
+                new Vector2(7, 100),
+                Border.SideType.Right);
+
+        new Border().createBody(world,
+                new Vector2(borderposx + WIDTH / 8 + 7, 110),
+                new Vector2(7, 100),
+                Border.SideType.Left);
+
+        new Border().createBody(world,
+                new Vector2(borderposx + WIDTH / 8, 110),
+                new Vector2(7, 100),
+                Border.SideType.Center);
+        //rightstart border
+
+        //leftstert border
+        new Border().createBody(world,
+                new Vector2(borderposx - WIDTH / 8 + 7, 160),
+                new Vector2(7, 150),
+                Border.SideType.Left);
+        new Border().createBody(world,
+                new Vector2(borderposx - WIDTH / 8 - 7, 160),
+                new Vector2(7, 150),
+                Border.SideType.Right);
+        new Border().createBody(world,
+                new Vector2(borderposx - WIDTH / 8, 160),
+                new Vector2(7, 150),
+                Border.SideType.Center);
+        //leftstart border
 
         for (int i = 0; i < BORDERS_COUNT; i++) {
             if (i % 2 == 0) {
@@ -57,26 +101,34 @@ public class GameScreen extends State {
 
                 trueborders.add(new Border().createBody(world,
                         new Vector2(borderposx + WIDTH / 8 - 7, borderposy),
-                        new Vector2(7, 35),
+                        new Vector2(7, 28),
                         Border.SideType.Right));
+
                 trueborders.add(new Border().createBody(world,
                         new Vector2(borderposx + WIDTH / 8 + 7, borderposy),
-                        new Vector2(7, 35),
+                        new Vector2(7, 28),
                         Border.SideType.Left));
+
+
                 trueborders.add(new Border().createBody(world,
                         new Vector2(borderposx + WIDTH / 8, borderposy),
                         new Vector2(7, 35),
                         Border.SideType.Center));
-            } else {
+
+            }
+            else if (i % 2 != 0 && Math.random()>0.5) {
                 borders.add(new BorderStar(borderposx - WIDTH / 8 - 7, borderposy - 35));
+
                 trueborders.add(new Border().createBody(world,
                         new Vector2(borderposx - WIDTH / 8 + 7, borderposy),
-                        new Vector2(7, 35),
+                        new Vector2(7, 28),
                         Border.SideType.Left));
+                
                 trueborders.add(new Border().createBody(world,
                         new Vector2(borderposx - WIDTH / 8 - 7, borderposy),
-                        new Vector2(7, 35),
+                        new Vector2(7, 28),
                         Border.SideType.Right));
+
                 trueborders.add(new Border().createBody(world,
                         new Vector2(borderposx - WIDTH / 8, borderposy),
                         new Vector2(7, 35),
@@ -87,12 +139,21 @@ public class GameScreen extends State {
         new Ground().createBody(world, new Vector2(0, 0), new Vector2(WIDTH, 10), true);
         bg = new Texture("wshbackground.png");
         ground = new Texture("wshground.png");
+        rightstart = new Texture("starterborder.png");
+        leftstart = new Texture("leftstartborder.png");
         player = new Player();
         player.createBody(world, new Vector2(WIDTH / 2, 20), new Vector2(25, 25));
 
 
         createContactListener();
-
+        //font
+        FreeTypeFontGenerator generator = new FreeTypeFontGenerator(Gdx.files.internal("TNR.ttf"));
+        FreeTypeFontParameter parameter = new FreeTypeFontParameter();
+        parameter.size = 60;
+        parameter.borderColor = Color.BLACK;
+        parameter.borderWidth = 3;
+        font = generator.generateFont(parameter);
+        generator.dispose();
     }
 
     @Override
@@ -133,6 +194,13 @@ public class GameScreen extends State {
                 );
             }
         }
+        if(bgposition<(cam.viewportHeight / 2f) + cam.position.y){
+            bgposition+=BG_SIZE;
+        }
+        if(player.body.getPosition().y>=siu){
+            score += 1;
+            siu+=240;
+        }
 
     }
 
@@ -143,32 +211,40 @@ public class GameScreen extends State {
         }
         cam.update();
         sb.setProjectionMatrix(cam.combined);
-        //исправить надо
         if (player.body.getPosition().y <= cam.position.y - (cam.viewportHeight / 2f)) {
-            gsm.set(new Pause(gsm));
+            gsm.set(new DieState(gsm, score, cam));
+            score = 0;
         }
+
+        if (player.body.getPosition().x <= cam.position.x - (cam.viewportWidth / 2f) ||
+            player.body.getPosition().x >= cam.position.x + (cam.viewportWidth / 2f)) {
+            gsm.set(new DieState(gsm, score, cam));
+            score = 0;
+        }
+
 
         doPhysicsStep(Gdx.graphics.getDeltaTime() * 10);
 
         ScreenUtils.clear(1, 0, 0, 1);
         sb.begin();
-        int bgpos = 10;
-        /*for (int i = 0; i < 5; i++) {
-            bgs.add(bg);
-            sb.draw(bg, 0, bgpos, WIDTH + 100, BG_SIZE);
-            bgpos += BG_SIZE;
-            if(bgs.get(i).getHeight()>(cam.viewportHeight / 2f) + cam.position.y){
 
-            }
-        }*/
+        int bgpos = 10;
+        for (int i=0; i<100; i++){
+            sb.draw(bg, 0, bgpos, WIDTH + 100, BG_SIZE);
+            bgpos+=BG_SIZE;
+        }
+        sb.draw(bg, 0, bgposition, WIDTH + 100, BG_SIZE);
         sb.draw(ground, 0, -HEIGHT + 10, WIDTH, HEIGHT);
         player.draw(sb);
         for (int i = 0; i < borders.size; i++) {
             sb.draw(borders.get(i).getBoardstar(), borders.get(i).getPosBord().x, borders.get(i).getPosBord().y);
         }
+        sb.draw(rightstart,WIDTH/2 + WIDTH/8 - 8, 10);
+        sb.draw(leftstart,WIDTH/2 - WIDTH/8 - 8, 10);
+        font.draw(sb, String.valueOf((int) score), 40, (cam.viewportHeight / 2f) + cam.position.y - 60);
         sb.end();
 
-        debugRenderer.render(world, sb.getProjectionMatrix());
+        //debugRenderer.render(world, sb.getProjectionMatrix());
     }
 
     @Override
@@ -211,7 +287,7 @@ public class GameScreen extends State {
                     player.hasSecondJump = true;
                 } else if (a.getUserData().equals("player") && b.getUserData().equals("ground_center")
                         || b.getUserData().equals("player") && a.getUserData().equals("ground_center")) {
-                    gsm.set(new Pause(gsm));
+                    gsm.set(new DieState(gsm, score, cam));
                 }
             }
 

@@ -74,8 +74,8 @@ public class Player {
         batch.draw(
                 isRightView ? axoright : axoleft,
                 body.getPosition().x - size.x,
-                body.getPosition().y - size.y,
-                size.x * 2, size.y * 2);
+                body.getPosition().y - size.y - 8,
+                size.x * 2 + 5, size.y * 2 + 15);
     }
 
     public void dispose() {
